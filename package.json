@@ -1,0 +1,93 @@
+{
+	"name": "clang-format-checker",
+	"displayName": "clang-format-checker",
+	"description": "Clang-format code-style checker",
+	"author": "Matej Sekoranja",
+	"publisher": "msekoranja",
+	"license": "GNU LGPL V3.0",
+	"version": "0.0.1",
+	"homepage": "https://github.com/msekoranja/clang-format-checker/blob/master/README.md",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/msekoranja/clang-format-checker"
+	},
+	"engines": {
+		"vscode": "^1.64.0"
+	},
+	"categories": [
+		"Programming Languages",
+		"Linters"
+	],
+	"keywords": [
+		"c++",
+		"cpp",
+		"style",
+		"clang-format"
+	],
+	"activationEvents": [
+		"onLanguage:cpp",
+		"onLanguage:c",
+		"onCommand:clang-format-checker.checkCode"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "clang-format-checker.checkCode",
+				"title": "Clang-format Checker: Check code."
+			},
+			{
+				"command": "clang-format-checker.clear",
+				"title": "Clang-format Checker: Clear report."
+			}
+		],
+		"menus": {
+			"editor/context": [
+				{
+					"command": "clang-format-checker.checkCode",
+					"group": "clangFormatCheckerGroup@1"
+				},
+				{
+					"command": "clang-format-checker.clear",
+					"group": "clangFormatCheckerGroup@2"
+				}
+			]
+		},
+		"configuration": {
+			"title": "Clang-format Checker",
+			"properties": {
+				"clang-format-checker.clangFormatExecutable": {
+					"type": "string",
+					"default": "clang-format",
+					"description": "Path to clang-format executable."
+				},
+				"clang-format-checker.checkOnChange": {
+					"type": "boolean",
+					"default": false,
+					"description": "Check code as you type (requires reload)."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile && npm run lint",
+		"lint": "eslint src --ext ts",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.64.0",
+		"@types/glob": "^7.2.0",
+		"@types/mocha": "^9.1.0",
+		"@types/node": "14.x",
+		"@typescript-eslint/eslint-plugin": "^5.12.1",
+		"@typescript-eslint/parser": "^5.12.1",
+		"eslint": "^8.9.0",
+		"glob": "^7.2.0",
+		"mocha": "^9.2.1",
+		"typescript": "^4.5.5",
+		"@vscode/test-electron": "^2.1.2"
+	}
+}
