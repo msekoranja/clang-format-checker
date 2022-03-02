@@ -4,7 +4,12 @@ import { dirname } from 'path';
 
 const CLANG_FORMAT_CODE = 'cfc';
 
-const diagnosticReplacements = new Map<string, string[]>();
+interface Replacement {
+	text: string;
+	charsToReplace: number;
+}
+
+const diagnosticReplacements = new Map<string, Replacement[]>();
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -55,7 +60,7 @@ function doCheckCode(doc: vscode.TextDocument, cfcDiagnostics: vscode.Diagnostic
 
 function refreshDiagnostics(result: string, doc: vscode.TextDocument, cfcDiagnostics: vscode.DiagnosticCollection): void {
 	const diagnostics: vscode.Diagnostic[] = [];
-	const replacements: string[] = [];
+	const replacements: Replacement[] = [];
 	let code = 0;
 	const regExp = /<replacement\soffset='(\d+)'\slength='(\d+)'>(.*)<\/replacement>/i;
 	result.split('\n').forEach(line => {
@@ -79,7 +84,7 @@ function refreshDiagnostics(result: string, doc: vscode.TextDocument, cfcDiagnos
 					severity: vscode.DiagnosticSeverity.Warning,
 					source: 'clang-format-checker'
 				});
-				replacements.push(replacement);
+				replacements.push({ text: replacement, charsToReplace: length });
 				code++;
 			}
 		}
@@ -138,21 +143,34 @@ class ClangFormatFixer implements vscode.CodeActionProvider {
 	];
 
 	provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection, context: vscode.CodeActionContext, token: vscode.CancellationToken): vscode.CodeAction[] {
-		// TODO group action as one, but one fix will invalidate replacement range
-		return context.diagnostics
-			.map(diagnostic => this.createFixAction(document, diagnostic));
+		return this.createFixActions(document, context.diagnostics);
 	}
 
-	private createFixAction(document: vscode.TextDocument, diagnostic: vscode.Diagnostic): vscode.CodeAction {
+	private createFixActions(document: vscode.TextDocument, diagnostics: readonly vscode.Diagnostic[]): vscode.CodeAction[] {
+		const actions : vscode.CodeAction[] = [];
+		if (diagnostics.length === 0) {
+			return actions;
+		}
+
+		let adjustment = 0;
 		let replacementsForDocument = diagnosticReplacements.get(document.uri.toString());
 		if (replacementsForDocument) {
-			const fix = new vscode.CodeAction('Fix Formatting', vscode.CodeActionKind.QuickFix);
+			const fix = new vscode.CodeAction('Reformat selected', vscode.CodeActionKind.QuickFix);
+			if (diagnostics.length === 1) {
+				fix.title = diagnostics[0].message;
+			} 
+			fix.diagnostics = diagnostics.slice();
 			fix.edit = new vscode.WorkspaceEdit();
-			fix.edit.replace(document.uri, diagnostic.range, replacementsForDocument[diagnostic.code as number]);
-			return fix;
-		} else {
-			return new vscode.CodeAction('<invalid action>', vscode.CodeActionKind.QuickFix);
+			fix.isPreferred = true;
+			diagnostics.forEach(diagnostic => {
+				const rs = replacementsForDocument as Replacement[];
+				const replacement = rs[diagnostic.code as number];
+				fix?.edit?.replace(document.uri, diagnostic.range, replacement.text);
+				adjustment += replacement.text.length - replacement.charsToReplace; 
+			});
+			actions.push(fix);
 		}
+		return actions;
 	}
 }
 
