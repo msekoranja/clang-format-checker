@@ -68,6 +68,7 @@ function refreshDiagnostics(result: string, doc: vscode.TextDocument, cfcDiagnos
 
 				replacement = replacement.replace(/&#13;/g, '\r');
 				replacement = replacement.replace(/&#10;/g, '\n');
+				replacement = replacement.replace(/&lt;/g, '<');
 
 				const startPos = doc.positionAt(offset);
 				const endPos = doc.positionAt(offset + length);
@@ -91,20 +92,22 @@ function refreshDiagnostics(result: string, doc: vscode.TextDocument, cfcDiagnos
 
 function getFormatMessage(replacement: string, length: number, replacedText: string): string {
 	if (replacement === '') {
-		if (length === 0) {
-			return 'Remove space.';
+		if (replacedText.startsWith('\r\n') || replacedText.startsWith('\n')) {
+			return "Remove unnecessary new-line(s).";
 		} else {
 			return 'Remove spacing.';
 		}
 	} else if (replacement === ' ') {
 		if (length === 0) {
-			return 'Missing space.';
+			return 'Add space.';
+		} else if (replacedText.startsWith('\r\n') || replacedText.startsWith('\n')) {
+			return "Remove unnecessary new-line(s).";
 		} else {
 			return 'Remove spacing.';
 		}
 	} else if (replacement.startsWith('\r\n') || replacement.startsWith('\n')) {
 		if (length === 0) {
-			return "Missing new line.";
+			return "Add new line.";
 		}
 
 		if (replacedText.charAt(0) === ' ') {
@@ -113,17 +116,27 @@ function getFormatMessage(replacement: string, length: number, replacedText: str
 
 		// there is a case where new line is being replaced with new line + spacing
 		if (replacement.startsWith(replacedText)) {
-			return getFormatMessage(replacement.substring(replacedText.length), length - replacedText.length, '');
+			return getFormatMessage(replacement.substring(replacedText.length), 0, '');
 		}
+		if (replacedText.startsWith(replacement)) {
+			return getFormatMessage('', length - replacedText.length, replacedText.substring(replacement.length));
+		}
+	}
+	else if (replacement.startsWith('#include')) {
+		return "Reogranize #include-s.";
 	}
 
 	const trimmed = replacement.trim();
 	if (trimmed.length === 0) {
-		return "Missing spacing.";
+		if (replacement.length > length) {
+			return "Missing spacing.";
+		} else if (replacedText.startsWith('\r\n') || replacedText.startsWith('\n')) {
+			return "Remove unnecessary new-line(s).";
+		}
 	} 
 
 	// fallback
-	return "formatting issue";
+	return "Re-format needed.";
 }
 
 let timeout: NodeJS.Timeout | undefined = undefined;
