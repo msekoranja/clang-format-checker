@@ -4,12 +4,7 @@ import { dirname } from 'path';
 
 const CLANG_FORMAT_CODE = 'cfc';
 
-interface Replacement {
-	text: string;
-	charsToReplace: number;
-}
-
-const diagnosticReplacements = new Map<string, Replacement[]>();
+const diagnosticReplacements = new Map<string, string[]>();
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -60,7 +55,7 @@ function doCheckCode(doc: vscode.TextDocument, cfcDiagnostics: vscode.Diagnostic
 
 function refreshDiagnostics(result: string, doc: vscode.TextDocument, cfcDiagnostics: vscode.DiagnosticCollection): void {
 	const diagnostics: vscode.Diagnostic[] = [];
-	const replacements: Replacement[] = [];
+	const replacements: string[] = [];
 	let code = 0;
 	const regExp = /<replacement\soffset='(\d+)'\slength='(\d+)'>(.*)<\/replacement>/i;
 	result.split('\n').forEach(line => {
@@ -76,15 +71,15 @@ function refreshDiagnostics(result: string, doc: vscode.TextDocument, cfcDiagnos
 
 				const startPos = doc.positionAt(offset);
 				const endPos = doc.positionAt(offset + length);
-
+				const range = new vscode.Range(startPos, endPos);
 				diagnostics.push({
 					code: code,
-					message: 'clang-format issue',	// TODO better message
-					range: new vscode.Range(startPos, endPos),
+					message: getFormatMessage(replacement, length, doc.getText(range)),
+					range: range,
 					severity: vscode.DiagnosticSeverity.Warning,
 					source: 'clang-format-checker'
 				});
-				replacements.push({ text: replacement, charsToReplace: length });
+				replacements.push(replacement);
 				code++;
 			}
 		}
@@ -92,6 +87,43 @@ function refreshDiagnostics(result: string, doc: vscode.TextDocument, cfcDiagnos
 
 	cfcDiagnostics.set(doc.uri, diagnostics);
 	diagnosticReplacements.set(doc.uri.toString(), replacements);
+}
+
+function getFormatMessage(replacement: string, length: number, replacedText: string): string {
+	if (replacement === '') {
+		if (length === 0) {
+			return 'Remove space.';
+		} else {
+			return 'Remove spacing.';
+		}
+	} else if (replacement === ' ') {
+		if (length === 0) {
+			return 'Missing space.';
+		} else {
+			return 'Remove spacing.';
+		}
+	} else if (replacement.startsWith('\r\n') || replacement.startsWith('\n')) {
+		if (length === 0) {
+			return "Missing new line.";
+		}
+
+		if (replacedText.charAt(0) === ' ') {
+			return "Remove trailing space(s).";
+		}
+
+		// there is a case where new line is being replaced with new line + spacing
+		if (replacement.startsWith(replacedText)) {
+			return getFormatMessage(replacement.substring(replacedText.length), length - replacedText.length, '');
+		}
+	}
+
+	const trimmed = replacement.trim();
+	if (trimmed.length === 0) {
+		return "Missing spacing.";
+	} 
+
+	// fallback
+	return "formatting issue";
 }
 
 let timeout: NodeJS.Timeout | undefined = undefined;
@@ -152,7 +184,7 @@ class ClangFormatFixer implements vscode.CodeActionProvider {
 			return actions;
 		}
 
-		let adjustment = 0;
+		//let adjustment = 0;
 		let replacementsForDocument = diagnosticReplacements.get(document.uri.toString());
 		if (replacementsForDocument) {
 			const fix = new vscode.CodeAction('Reformat selected', vscode.CodeActionKind.QuickFix);
@@ -162,11 +194,12 @@ class ClangFormatFixer implements vscode.CodeActionProvider {
 			fix.diagnostics = diagnostics.slice();
 			fix.edit = new vscode.WorkspaceEdit();
 			fix.isPreferred = true;
+			// we assume that multiple edits are handled by VSCode (i.e. offsets)
+			// if not, the idea is to do fixes from the end of the document to the begginning
 			diagnostics.forEach(diagnostic => {
-				const rs = replacementsForDocument as Replacement[];
+				const rs = replacementsForDocument as string[];
 				const replacement = rs[diagnostic.code as number];
-				fix?.edit?.replace(document.uri, diagnostic.range, replacement.text);
-				adjustment += replacement.text.length - replacement.charsToReplace; 
+				fix?.edit?.replace(document.uri, diagnostic.range, replacement);
 			});
 			actions.push(fix);
 		}
