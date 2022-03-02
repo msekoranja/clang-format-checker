@@ -4,6 +4,7 @@ All notable changes to the "clang-format-checker" extension will be documented i
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
-
+## [0.1.0] - 2022-03-02
+### Added
 - Initial release
+
