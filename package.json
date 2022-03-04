@@ -5,7 +5,7 @@
 	"author": "Matej Sekoranja",
 	"publisher": "msekoranja",
 	"license": "GNU LGPL V3.0",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"homepage": "https://github.com/msekoranja/clang-format-checker/blob/master/README.md",
 	"repository": {
 		"type": "git",
@@ -27,6 +27,7 @@
 	"activationEvents": [
 		"onLanguage:cpp",
 		"onLanguage:c",
+		"onLanguage:cuda-cpp",
 		"onCommand:clang-format-checker.checkCode"
 	],
 	"main": "./out/extension.js",

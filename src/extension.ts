@@ -36,6 +36,13 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 function doCheckCode(doc: vscode.TextDocument, cfcDiagnostics: vscode.DiagnosticCollection): void {
+	// do not instrument non-c[pp] code
+	if (!(doc.languageId === "c" ||
+		  doc.languageId === "cpp" ||
+		  doc.languageId === "cuda-cpp")) {
+			  return;
+	}
+
 	try {
 		const clangFormatExec = vscode.workspace.getConfiguration('clang-format-checker').get('clangFormatExecutable');
 
