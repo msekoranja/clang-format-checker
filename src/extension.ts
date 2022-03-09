@@ -47,11 +47,9 @@ function doCheckCode(doc: vscode.TextDocument, cfcDiagnostics: vscode.Diagnostic
 		const clangFormatExec = vscode.workspace.getConfiguration('clang-format-checker').get('clangFormatExecutable');
 
 		const result = execSync(
-			`${clangFormatExec} --style=file --fallback-style=none --output-replacements-xml`,
+			`${clangFormatExec} --style=file --fallback-style=none --output-replacements-xml ${doc.uri.fsPath}`,
 			{
-				stdio: 'pipe',
 				cwd: dirname(doc.uri.fsPath),
-				input: doc.getText()
 			}).toString();
 		refreshDiagnostics(result, doc, cfcDiagnostics);
 	}
